@@ -1,6 +1,6 @@
 // Plato service worker: caches the app so it opens and works offline.
 // Bump VERSION whenever you change index.html so phones pick up the update.
-const VERSION = "plato-v2";
+const VERSION = "plato-v5";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./apple-touch-icon.png"];
 
 self.addEventListener("install", e => {
