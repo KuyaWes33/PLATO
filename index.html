@@ -212,7 +212,7 @@ ol.howto li{margin:4px 0}
    ============================================================ */
 const CONFIG = {
   // Your Cloudflare Worker address (no slash at the end), e.g. "https://plato-api.yourname.workers.dev"
-  WORKER_URL: "https://plato-api.wesley-mambiar.workers.dev/",
+  WORKER_URL: "",
   // Donations: leave any of these as "" to hide them.
   GCASH_QR_IMAGE: "",   // upload your GCash QR next to index.html and write its file name, e.g. "gcash-qr.png"
   GCASH_NAME: "",       // name shown under the QR, e.g. "J. W. M."
@@ -234,7 +234,7 @@ const MEALS = [["breakfast","Breakfast","var(--orange)"],["lunch","Lunch","var(-
 
 /* ============ storage: this device only ============ */
 // Everything lives in this browser's localStorage. Nothing is sent anywhere except
-// food photos/descriptions to the Claude API when you ask for an analysis.
+// food photos/descriptions to the AI (through your Worker) when you ask for an analysis.
 const Store = {
   get(k,def){ try{ const v=localStorage.getItem("plato:"+k); return v? JSON.parse(v):def; }catch(e){ return def; } },
   set(k,v){ try{ localStorage.setItem("plato:"+k, JSON.stringify(v)); }catch(e){ toast("Storage is full — export a backup and clear old photos"); } },
@@ -310,9 +310,10 @@ function errText(e){
   return ({
     network:"No internet connection. Photo analysis needs internet — use quick add for now, or try again when you're online.",
     limit:`You've used today's ${S.scans?.limit||""} photo scans. They reset at midnight. Quick add and recent foods still work.`,
-    capacity:"Plato has reached today's total scans for everyone. Try again tomorrow — quick add still works.",
+    capacity:"Plato has reached today's free AI limit for everyone. Scans come back tomorrow — quick add and recent foods still work.",
     credits:"Photo scans are paused for now while Plato tops up its AI credit. Logging still works.",
     busy:"The AI service is busy right now. Try again in a moment.",
+    quota:"Plato's free AI scans are used up for now. Try again in a few minutes, or tomorrow if it keeps happening. Quick add still works.",
     json:"The result came back in an unreadable format. Try again, or describe the food in words.",
     bad_image:"That image couldn't be read. Try a JPG or PNG photo.",
     config:"Photo scanning isn't set up correctly yet. The app owner needs to check the Worker settings.",
@@ -340,7 +341,7 @@ function viewSetup(){
       <div class="big">Snap it.<br>Track it.<br>Own it.</div>
       <p class="muted">Take a photo of your food and Plato estimates the calories and nutrients, then keeps you on a healthy pace to your goal.</p>
     </div>
-    <div class="note good">🔒 Your log, weight and plan stay on this phone only — no account needed. Food photos are sent to Claude for analysis and aren't stored.</div>
+    <div class="note good">🔒 Your log, weight and plan stay on this phone only — no account needed. Food photos are sent to Google's Gemini AI for analysis, and Plato doesn't store them.</div>
     <button class="btn" data-setup="done" style="margin-top:16px">Set up my plan</button>`;
 }
 /* ============ Today ============ */
@@ -537,7 +538,7 @@ function viewMe(){
   <h2>Photo scans</h2>
   <div class="card stack">
     <p class="muted small" style="margin:0">${!CONFIG.WORKER_URL?"Photo scanning isn't turned on yet.":scansLeft()!==null?`You have <b style="color:var(--ink)">${scansLeft()} of ${S.scans.limit}</b> photo scans left today. They reset at midnight.`:"You get a set number of free photo scans each day. They reset at midnight."}</p>
-    <p class="muted small" style="margin:0"><b style="color:var(--ink)">Privacy:</b> when you scan, your photo and note are sent to Claude (by Anthropic) to estimate nutrition. Plato doesn't store your photos, and your food log never leaves this phone.</p>
+    <p class="muted small" style="margin:0"><b style="color:var(--ink)">Privacy:</b> when you scan, your photo and note are sent to Google's Gemini AI to estimate nutrition, under Google's Gemini API terms. Avoid including faces or personal info in food photos. Plato itself doesn't store your photos, and your food log never leaves this phone.</p>
   </div>
 
   <h2>Install and backup</h2>
@@ -670,7 +671,7 @@ function drawSheet(){
   }
   else if(L.step==="error"){
     b.innerHTML=sheetHead("Couldn't analyze")+`<div class="note warn">${esc(L.err)}</div><div class="row" style="margin-top:12px"><button class="btn ghost" data-back>Back</button>${L.retry?`<button class="btn" id="lRetry">Try again</button>`:""}</div>
-      ${["limit","capacity","credits"].includes(L.errCode)&&hasDonate()?`<button class="btn" data-donate-link style="margin-top:10px">Support Plato ☕</button>`:""}`;
+      ${["limit","capacity","credits","quota"].includes(L.errCode)&&hasDonate()?`<button class="btn" data-donate-link style="margin-top:10px">Support Plato ☕</button>`:""}`;
     b.querySelectorAll("[data-donate-link]").forEach(x=>x.onclick=e=>{ e.preventDefault(); closeSheet(); S.tab="me"; render(); setTimeout(()=>$("#support")?.scrollIntoView(),50); });
     const rt=$("#lRetry"); if(rt) rt.onclick=()=>analyze();
   }
@@ -729,7 +730,7 @@ async function analyze(){
   }catch(e){
     if(!L||e?.code==="cancelled") return;
     L.err=errText(e); L.errCode=e?.code;
-    L.retry=!["config","forbidden","off","limit","capacity","credits"].includes(e?.code); L.step="error"; drawSheet();
+    L.retry=!["config","forbidden","off","limit","capacity","credits","quota"].includes(e?.code); L.step="error"; drawSheet();
   }
 }
 
