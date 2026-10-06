@@ -1,7 +1,9 @@
 // Plato service worker: caches the app so it opens and works offline.
 // Bump VERSION whenever you change index.html so phones pick up the update.
-const VERSION = "plato-v5";
-const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./apple-touch-icon.png"];
+const VERSION = "plato-v6";
+const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./apple-touch-icon.png",
+  "./exercises.js", "./workout.js", "./coach3d.js",
+  "./thumbs/arm_circles.webp", "./thumbs/barbell_back_squat.webp", "./thumbs/bent_over_row.webp", "./thumbs/bird_dog.webp", "./thumbs/burpee.webp", "./thumbs/calf_raise.webp", "./thumbs/childs_pose.webp", "./thumbs/crunch.webp", "./thumbs/db_bench_press.webp", "./thumbs/db_curl.webp", "./thumbs/db_lateral_raise.webp", "./thumbs/db_lunge.webp", "./thumbs/db_shoulder_press.webp", "./thumbs/deadlift.webp", "./thumbs/forward_fold.webp", "./thumbs/glute_bridge.webp", "./thumbs/goblet_squat.webp", "./thumbs/high_knees.webp", "./thumbs/hip_thrust.webp", "./thumbs/jumping_jack.webp", "./thumbs/knee_pushup.webp", "./thumbs/lat_pulldown.webp", "./thumbs/leg_raise.webp", "./thumbs/mountain_climber.webp", "./thumbs/plank.webp", "./thumbs/pushup.webp", "./thumbs/reverse_lunge.webp", "./thumbs/romanian_deadlift.webp", "./thumbs/squat.webp", "./thumbs/superman.webp", "./thumbs/tricep_pushdown.webp"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
