@@ -98,6 +98,9 @@ h3{font-size:1rem;font-weight:700;margin:0}
 .entry .nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .entry .kc{font-weight:800;white-space:nowrap}
 .iconbtn{border:0;background:transparent;color:var(--muted);width:32px;height:32px;border-radius:50%;font-size:1.05rem;flex:none}
+.iconbtn.ed{display:inline-grid;place-items:center;color:var(--primary)}
+.iconbtn.ed svg{width:18px;height:18px}
+.entry .info[data-edit]{cursor:pointer}
 .empty{color:var(--muted);font-size:.9rem;padding:4px 0}
 .recents{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
 .recents .chip{white-space:nowrap;border:2px solid var(--surface2)}
@@ -188,6 +191,13 @@ ol.howto li{margin:4px 0}
 .hidden{display:none!important}
 .toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:.9rem;font-weight:600;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
 .toast.show{opacity:1}
+.update-bar{position:fixed;top:calc(8px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:45;width:min(528px,calc(100% - 32px));background:var(--ink);color:var(--bg);border-radius:16px;padding:8px 6px 8px 14px;display:flex;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(20,10,40,.28)}
+.update-bar p{margin:0;flex:1;min-width:0;font-size:.9rem;font-weight:600;line-height:1.3}
+.update-bar p small{display:block;font-weight:500;opacity:.8}
+.update-bar .btn{flex:none}
+.update-bar .iconbtn{color:var(--bg);opacity:.75}
+.rel{background:var(--surface);border-radius:16px;padding:12px 14px;margin-top:10px}
+.rel-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 
 /* ============ workouts ============ */
 .btn.light{background:#fff;color:#4b14d1}
@@ -328,6 +338,7 @@ ol.steps li::before{content:counter(st);position:absolute;left:0;top:4px;width:2
 <div class="scrim" id="scrim"></div>
 <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle"><div class="sheet-in" id="sheetBody"></div></div>
 <div class="toast" id="toast" role="status"></div>
+<div class="update-bar hidden" id="updBar" role="status"></div>
 
 <script src="exercises.js"></script>
 <script src="workout.js"></script>
@@ -530,11 +541,11 @@ function viewToday(){
     return `<div class="card meal" style="--mc:${color}"><div class="meal-head"><h3>${label}</h3><span class="muted small">${r0(kc)} kcal</span></div>
     ${list.length?list.map(e=>`<div class="entry">
       ${e.thumb?`<img class="thumb" src="${e.thumb}" alt="">`:`<div class="thumb">🍽️</div>`}
-      <div class="info"><div class="nm">${esc(e.name)}</div><div class="muted small">P ${r0(e.p)} · C ${r0(e.c)} · F ${r0(e.f)} g</div></div>
-      <div class="kc">${r0(e.kcal)}</div><button class="iconbtn" data-del="${e.id}" aria-label="Delete ${esc(e.name)}">✕</button></div>`).join("")
+      <div class="info" data-edit="${e.id}"><div class="nm">${esc(e.name)}</div><div class="muted small">P ${r0(e.p)} · C ${r0(e.c)} · F ${r0(e.f)} g${e.edited?" · edited":""}</div></div>
+      <div class="kc">${r0(e.kcal)}</div><button class="iconbtn ed" data-edit="${e.id}" aria-label="Edit ${esc(e.name)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg></button><button class="iconbtn" data-del="${e.id}" aria-label="Delete ${esc(e.name)}">✕</button></div>`).join("")
     :`<div class="empty">Nothing logged yet.</div>`}
     <button class="btn ghost sm" data-add="${k}" style="margin-top:8px">+ Add to ${label.toLowerCase()}</button></div>`;}).join("")}
-  <p class="muted small" style="margin-top:18px">Photo estimates are approximate — hidden oil, sauces and portion depth are hard to see. Adjust portions before saving.</p>`;
+  <p class="muted small" style="margin-top:18px">Photo estimates are approximate — hidden oil, sauces and portion depth are hard to see. Adjust portions before saving, or tap any logged food to edit it later.</p>`;
 }
 
 /* ============ charts ============ */
@@ -669,6 +680,12 @@ function viewMe(){
     <p class="muted small" style="margin:0"><b style="color:var(--ink)">Privacy:</b> when you scan, your photo and note are sent to Google's Gemini AI to estimate nutrition, under Google's Gemini API terms. Avoid including faces or personal info in food photos. When you build a workout plan, your answers (goal, schedule, experience, pain areas, age and sex) are sent the same way. Plato itself doesn't store your photos, and your logs never leave this phone.</p>
   </div>
 
+  <h2>Updates</h2>
+  <div class="card stack">
+    <p class="muted small" style="margin:0" id="appVer">${versionText()}</p>
+    <div class="row"><button class="btn ghost" id="chkUpd">Check for updates</button><button class="btn ghost" id="seeNew">What's new</button></div>
+  </div>
+
   <h2>Install and backup</h2>
   <div class="card stack">
     ${standalone?`<div class="note good">✅ Plato is installed on this device.</div>`
@@ -699,6 +716,7 @@ function bindView(){
   app.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{ S.tab=b.dataset.go; render(); });
   app.querySelectorAll("[data-glass]").forEach(b=>b.onclick=()=>{ const i=+b.dataset.glass; S.day.water=S.day.water===i+1?i:i+1; saveDay(); render(); });
   app.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{ const e=S.day.entries.find(x=>x.id===b.dataset.del); if(!confirm(`Delete ${e?.name||"this entry"}?`)) return; S.day.entries=S.day.entries.filter(x=>x.id!==b.dataset.del); saveDay(); render(); });
+  app.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>openEditSheet(b.dataset.edit));
   app.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>openLogSheet(b.dataset.add));
   app.querySelectorAll("[data-recent]").forEach(b=>b.onclick=()=>{ const r=S.recents[+b.dataset.recent]; S.day.entries.push({...r,id:uid(),meal:mealForNow(),time:Date.now()}); saveDay(); toast(`Added ${r.name}`); render(); });
   app.querySelectorAll("[data-range]").forEach(b=>b.onclick=()=>{ S.progRange=+b.dataset.range; render(); });
@@ -722,6 +740,10 @@ function bindView(){
     if(currentWeight()!==w) logWeight(w);
     Store.set("profile",S.profile); toast("Plan saved 🎯"); render();
   };
+
+  // updates
+  const cu=$("#chkUpd"); if(cu) cu.onclick=()=>checkForUpdate(true);
+  const sn=$("#seeNew"); if(sn) sn.onclick=()=>{ if(!U.releases.length) return toast("Release notes aren't available offline yet"); showWhatsNew(U.releases.slice(0,5),"Release notes"); };
 
   // install / backup
   const ins=$("#install"); if(ins) ins.onclick=async()=>{ S.installEvt.prompt(); await S.installEvt.userChoice; S.installEvt=null; render(); };
@@ -828,9 +850,46 @@ function drawSheet(){
     $("#lSave").onclick=async()=>{ L.meal=$("#lMeal").value; const t=itemTotals(), name=L.items.map(i=>i.name).join(", "), thumb=L.file?await makeThumb(L.file):null;
       commitEntry({name,kcal:t.kcal,p:t.p,c:t.c,f:t.f,fiber:t.fiber,sugar:t.sugar,sodium:t.sodium,thumb}); };
   }
+  else if(L.step==="edit"){
+    const e=S.day.entries.find(x=>x.id===L.editId); if(!e) return closeSheet();
+    const fld=(id,label,val,step)=>`<div><label class="f" for="${id}">${label}</label><input class="inp" id="${id}" type="number" inputmode="decimal" min="0" step="${step}" value="${val}"></div>`;
+    b.innerHTML=sheetHead("Edit food")+`
+      ${e.thumb?`<img class="preview" src="${e.thumb}" alt="" style="width:120px;height:120px;margin:0 auto 12px">`:""}
+      <div class="stack">
+        <div><label class="f" for="eName">Food name</label><input class="inp" id="eName" maxlength="200" value="${esc(e.name)}"></div>
+        <div><label class="f" for="lMeal">Meal</label>${mealSelect()}</div>
+        <div><label class="f">Ate more or less? Scale everything</label>
+          <div class="chips" style="margin:0">${[[0.5,"½×"],[0.75,"¾×"],[1.25,"1¼×"],[1.5,"1½×"],[2,"2×"]].map(([m,l])=>`<button class="chip" data-scale="${m}" aria-label="Multiply all values by ${m}">${l}</button>`).join("")}</div></div>
+        <div class="row">${fld("eK","Calories (kcal)",r0(e.kcal),1)}${fld("eP","Protein (g)",r1(e.p),0.1)}</div>
+        <div class="row">${fld("eC","Carbs (g)",r1(e.c),0.1)}${fld("eF","Fat (g)",r1(e.f),0.1)}</div>
+        <div class="row">${fld("eFi","Fiber (g)",r1(e.fiber),0.1)}${fld("eSu","Sugar (g)",r1(e.sugar),0.1)}</div>
+        ${fld("eNa","Sodium (mg)",r0(e.sodium),1)}
+      </div>
+      <div class="row" style="margin-top:14px"><button class="btn danger" id="eDel">Delete</button><button class="btn" id="eSave">Save changes</button></div>`;
+    const FIELDS=[["eK","kcal",0],["eP","p",1],["eC","c",1],["eF","f",1],["eFi","fiber",1],["eSu","sugar",1],["eNa","sodium",0]];
+    b.querySelectorAll("[data-scale]").forEach(x=>x.onclick=()=>{ const m=+x.dataset.scale;
+      for(const [id,,dp] of FIELDS){ const el=$("#"+id), v=parseFloat(el.value); if(v>=0) el.value=dp?r1(v*m):r0(v*m); }
+      toast(`All amounts ×${m}`); });
+    $("#eSave").onclick=()=>{
+      if($("#eK").value.trim()==="") return toast("Enter the calories");
+      const vals={};
+      for(const [id,key,dp] of FIELDS){ const raw=$("#"+id).value.trim(), n=raw===""?0:Number(raw);
+        if(!Number.isFinite(n)||n<0) return toast("Amounts can't be negative"); vals[key]=dp?r1(n):r0(n); }
+      const oldName=e.name;
+      Object.assign(e,vals,{name:$("#eName").value.trim()||oldName,meal:$("#lMeal").value,edited:Date.now()});
+      saveDay();
+      // Keep "log again" chips in sync with the corrected values
+      const ri=S.recents.findIndex(r=>r.name.toLowerCase()===oldName.toLowerCase());
+      if(ri>=0){ const {id,meal,time,thumb,edited,...rest}=e; S.recents[ri]=rest; S.recents=S.recents.filter((r,i)=>i===ri||r.name.toLowerCase()!==rest.name.toLowerCase()); Store.set("recents",S.recents); }
+      closeSheet(); toast("Changes saved ✅"); renderKeepScroll();
+    };
+    $("#eDel").onclick=()=>{ if(!confirm(`Delete ${e.name}?`)) return; S.day.entries=S.day.entries.filter(x=>x.id!==e.id); saveDay(); closeSheet(); toast("Deleted"); renderKeepScroll(); };
+  }
   b.querySelectorAll("[data-close]").forEach(x=>x.onclick=closeSheet);
   b.querySelectorAll("[data-back]").forEach(x=>x.onclick=()=>{ L.items=[]; L.step="pick"; L.file=null; L.url=null; drawSheet(); });
 }
+function openEditSheet(id){ const e=S.day.entries.find(x=>x.id===id); if(!e) return; L={step:"edit",editId:id,meal:e.meal}; openSheet(); drawSheet(); }
+function renderKeepScroll(){ const y=window.scrollY; render(); window.scrollTo(0,y); }
 function itemTotals(){ const t={kcal:0,p:0,c:0,f:0,fiber:0,sugar:0,sodium:0}; for(const it of L.items){ t.kcal+=it.kcal*it.mult; t.p+=it.protein_g*it.mult; t.c+=it.carbs_g*it.mult; t.f+=it.fat_g*it.mult; t.fiber+=it.fiber_g*it.mult; t.sugar+=it.sugar_g*it.mult; t.sodium+=it.sodium_mg*it.mult; } return t; }
 function commitEntry(e){
   const entry={id:uid(),meal:L.meal,time:Date.now(),...e,kcal:r0(e.kcal),p:r1(e.p),c:r1(e.c),f:r1(e.f),fiber:r1(e.fiber),sugar:r1(e.sugar),sodium:r0(e.sodium)};
@@ -863,6 +922,66 @@ async function analyze(){
   }
 }
 
+/* ============ update notifications ============ */
+// Release notes live in version.json. To ship an update: add a new entry at the TOP of
+// "releases" in version.json and bump VERSION in sw.js. Open apps check every 30 minutes
+// and whenever they're reopened; when a newer version is found they show an "Update" bar.
+// After updating, each person sees the new notes once in a "What's new" sheet.
+const U={running:null,releases:[],latest:null,lastCheck:0};
+async function fetchReleases(){
+  const res=await fetch("version.json",{cache:"no-store"}); if(!res.ok) throw 0;
+  const d=await res.json(), rel=Array.isArray(d.releases)?d.releases.filter(r=>r&&r.version):[];
+  if(!rel.length) throw 0; return rel;
+}
+function versionText(){ const r=U.releases[0]; return r?`You're on Plato <b style="color:var(--ink)">${esc(r.version)}</b>${r.date?` (${esc(new Date(r.date+"T12:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}))})`:""}. Plato checks for updates automatically and lets you know when something new is out.`:"Plato checks for updates automatically and lets you know when something new is out."; }
+async function initUpdates(){
+  try{ U.releases=await fetchReleases(); }catch(e){ return; }
+  U.running=U.releases[0].version; U.lastCheck=Date.now();
+  const v=$("#appVer"); if(v) v.innerHTML=versionText();
+  const seen=Store.get("seenVersion",null);
+  if(seen===U.running) return;
+  Store.set("seenVersion",U.running);
+  // Brand-new users don't need release notes; existing users see what changed since their last visit.
+  if(!S.settings.setupDone||!S.profile||$("#sheet").classList.contains("open")||document.body.classList.contains("playing")) return;
+  const i=U.releases.findIndex(r=>r.version===seen);
+  showWhatsNew(U.releases.slice(0,i>0?Math.min(i,3):1),"What's new ✨");
+}
+async function checkForUpdate(manual){
+  U.lastCheck=Date.now();
+  navigator.serviceWorker?.getRegistration().then(r=>r?.update()).catch(()=>{});
+  let rel; try{ rel=await fetchReleases(); }
+  catch(e){ if(manual) toast(navigator.onLine?"Couldn't check for updates right now":"You're offline — connect to check for updates"); return; }
+  if(!U.running){ U.releases=rel; U.running=rel[0].version; }
+  if(rel[0].version!==U.running){ U.latest=rel[0]; showUpdateBar(); }
+  else if(manual) toast("You're on the latest version ✅");
+}
+function showUpdateBar(){
+  const bar=$("#updBar"), r=U.latest;
+  bar.innerHTML=`<p>✨ A new version of Plato is out${r?.title?`<small>${esc(r.title)}</small>`:""}</p><button class="btn sm" id="updGo">Update</button><button class="iconbtn" id="updX" aria-label="Dismiss">✕</button>`;
+  bar.classList.remove("hidden");
+  $("#updGo").onclick=applyUpdate;
+  $("#updX").onclick=()=>bar.classList.add("hidden");
+}
+async function applyUpdate(){
+  const go=$("#updGo"); if(go){ go.disabled=true; go.textContent="Updating…"; }
+  // Pull fresh copies of the app files past the browser cache, then reload into them.
+  try{
+    const r=await navigator.serviceWorker?.getRegistration(); await r?.update().catch(()=>{});
+    await Promise.race([Promise.allSettled(["./","index.html","exercises.js","workout.js","coach3d.js","version.json"].map(u=>fetch(u,{cache:"reload"}))),new Promise(res=>setTimeout(res,8000))]);
+  }catch(e){}
+  location.reload();
+}
+function showWhatsNew(list,title){
+  L=null; openSheet();
+  const b=$("#sheetBody");
+  b.innerHTML=sheetHead(esc(title))+list.map(r=>`<div class="rel"><div class="rel-head"><h3>${esc(r.title||"Improvements")}</h3><span class="muted small">${esc(r.version)}${r.date?` · ${esc(new Date(r.date+"T12:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric"}))}`:""}</span></div>
+    ${Array.isArray(r.notes)&&r.notes.length?`<ul class="tips">${r.notes.map(n=>`<li>${esc(n)}</li>`).join("")}</ul>`:""}</div>`).join("")+
+    `<button class="btn" data-close style="margin-top:14px">Got it</button>`;
+  b.querySelectorAll("[data-close]").forEach(x=>x.onclick=closeSheet);
+}
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden&&Date.now()-U.lastCheck>5*60e3) checkForUpdate(false); });
+setInterval(()=>{ if(!document.hidden) checkForUpdate(false); },30*60e3);
+
 /* ============ boot ============ */
 window.addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); S.installEvt=e; if(S.tab==="me") render(); });
 window.addEventListener("online",()=>{ if(!L) render(); });
@@ -875,6 +994,7 @@ if(S.settings.apiKey!==undefined||S.settings.model!==undefined){ delete S.settin
 loadDay();
 if(S.settings.setupDone&&!S.profile) S.tab="me";
 render();
+initUpdates();
 </script>
 </body>
 </html>
