@@ -1,0 +1,24 @@
+{
+  "releases": [
+    {
+      "version": "1.1.0",
+      "date": "2026-11-09",
+      "title": "Edit your meals",
+      "notes": [
+        "Logged something wrong? Tap any food on the Today screen (or the pencil icon) to fix its name, meal, calories, protein, carbs, fat and more.",
+        "Ate more or less than you logged? Use the ½× to 2× buttons to scale the whole entry at once.",
+        "Plato now tells you when a new version is out. Tap Update to get it, and you'll see what changed."
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "date": "2026-09-29",
+      "title": "Plato launches",
+      "notes": [
+        "Snap a photo or describe your food to estimate calories and nutrients.",
+        "A personal calorie and macro target based on your body, activity and goal.",
+        "Workout plans with a 3D coach, plus weight and calorie progress charts."
+      ]
+    }
+  ]
+}
