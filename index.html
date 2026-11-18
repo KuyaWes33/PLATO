@@ -8,8 +8,8 @@
 <meta name="theme-color" content="#130C05">
 <meta name="color-scheme" content="dark">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png?v=2">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=2">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Plato">
@@ -956,7 +956,7 @@ async function analyze(){
 /* ============ update notifications ============ */
 // Release notes live in version.json. To ship an update: add a new entry at the TOP of
 // "releases" in version.json and bump VERSION in sw.js. Open apps check every 30 minutes
-// and whenever they're reopened; when a newer version is found they show an "Update" bar.
+// and whenever they're reopened; when a newer version is found they show a "Refresh" bar.
 // After updating, each person sees the new notes once in a "What's new" sheet.
 const U={running:null,releases:[],latest:null,lastCheck:0};
 async function fetchReleases(){
@@ -988,13 +988,13 @@ async function checkForUpdate(manual){
 }
 function showUpdateBar(){
   const bar=$("#updBar"), r=U.latest;
-  bar.innerHTML=`<p>✨ A new version of Plato is out${r?.title?`<small>${esc(r.title)}</small>`:""}</p><button class="btn sm" id="updGo">Update</button><button class="iconbtn" id="updX" aria-label="Dismiss">✕</button>`;
+  bar.innerHTML=`<p>✨ Plato has been updated<small>${r?.title?`${esc(r.title)}. `:""}Refresh to get the new version.</small></p><button class="btn sm" id="updGo">Refresh</button><button class="iconbtn" id="updX" aria-label="Dismiss">✕</button>`;
   bar.classList.remove("hidden");
   $("#updGo").onclick=applyUpdate;
   $("#updX").onclick=()=>bar.classList.add("hidden");
 }
 async function applyUpdate(){
-  const go=$("#updGo"); if(go){ go.disabled=true; go.textContent="Updating…"; }
+  const go=$("#updGo"); if(go){ go.disabled=true; go.textContent="Refreshing…"; }
   // Pull fresh copies of the app files past the browser cache, then reload into them.
   try{
     const r=await navigator.serviceWorker?.getRegistration(); await r?.update().catch(()=>{});
