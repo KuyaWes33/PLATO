@@ -1,6 +1,16 @@
 {
   "releases": [
     {
+      "version": "1.2.0",
+      "date": "2026-11-18",
+      "title": "Plato meets Pluto",
+      "notes": [
+        "A new golden, dark look. Your plate is now Pluto, photographed by NASA's New Horizons.",
+        "Sunlight moves across Pluto as you log toward your daily target. It glows when you're on target and turns a little rusty if you go over.",
+        "Collect Pluto's five moons, from Charon to Styx, by logging days in a row."
+      ]
+    },
+    {
       "version": "1.1.0",
       "date": "2026-11-09",
       "title": "Edit your meals",
