@@ -76,6 +76,32 @@ h3{font-size:1rem;font-weight:700;margin:0}
 .moon{display:grid;justify-items:center;gap:3px;font-size:.7rem;font-weight:600;color:var(--muted)}
 .moon.got{color:var(--ink)}
 .moon svg{width:28px;height:28px}
+/* steps & activity */
+.earned{display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:.82rem;font-weight:700;color:var(--lime);background:rgba(155,208,122,.12);border-radius:999px;padding:4px 12px}
+.steps-row{display:flex;align-items:center;gap:12px;margin-top:10px}
+.steps-row .info{flex:1;min-width:0}
+.steps-ring{width:54px;height:54px;flex:none}
+.steps-num{font-family:var(--font-logo);font-size:1.5rem;line-height:1.1;font-variant-numeric:tabular-nums}
+.gain{font-weight:800;color:var(--lime);white-space:nowrap}
+.big-in{width:100%;background:var(--surface2);border:2px solid transparent;border-radius:14px;padding:10px 14px;font-family:var(--font-logo);font-weight:300;font-size:2.2rem;font-variant-numeric:tabular-nums}
+.big-in:focus{border-color:var(--primary);outline:none}
+.est{background:var(--surface);border-radius:16px;padding:12px 14px;display:grid;gap:5px;margin-top:12px}
+.est .line{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:.88rem}
+.est .line b{font-variant-numeric:tabular-nums;white-space:nowrap}
+.est .plus{color:var(--lime);font-size:1.02rem}
+.est p{margin:2px 0 0;font-size:.78rem;color:var(--muted)}
+.acts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.acts button{border:2px solid var(--surface2);background:var(--surface);border-radius:14px;padding:8px 4px;font-size:.8rem;font-weight:600;display:grid;justify-items:center;gap:2px}
+.acts button span{font-size:1.3rem}
+.acts button[aria-pressed="true"]{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 14%,var(--surface))}
+.stepper{display:flex;align-items:center;gap:8px}
+.stepper>button{width:40px;height:40px;border-radius:50%;border:0;background:var(--primary);color:var(--on-grad);font-weight:800;font-size:1.15rem;flex:none}
+.stepper output{font-family:var(--font-logo);font-size:1.35rem;min-width:70px;text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums}
+.stepper .chips{margin:0 0 0 auto;padding:0;gap:5px}
+.stepper .chip{padding:5px 10px}
+.chips .chip[aria-pressed="true"]{background:var(--primary);border-color:var(--primary);color:var(--on-grad)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.78rem;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 @media (prefers-reduced-motion: reduce){.planet img,.planet .fx{transition:none}}
 .cheer{text-align:center;font-weight:700;margin:4px 0 0;color:var(--primary)}
 
@@ -393,9 +419,27 @@ function loadDay(){ S.day = Store.get("day-"+S.date,{entries:[],water:0}); if(!S
 function saveDay(){
   Store.set("day-"+S.date,S.day);
   const t=dayTotals(S.day);
-  if(S.day.entries.length) S.summary[S.date]={kcal:r0(t.kcal),p:r0(t.p),c:r0(t.c),f:r0(t.f)}; else delete S.summary[S.date];
+  if(S.day.entries.length||S.day.steps||S.day.acts?.length) S.summary[S.date]={kcal:r0(t.kcal),p:r0(t.p),c:r0(t.c),f:r0(t.f),steps:S.day.steps||0,earned:dayEarned(S.day).earned}; else delete S.summary[S.date];
   Store.set("summary",S.summary);
   clearTimeout(saveDay._m); saveDay._m=setTimeout(checkMoons,2600);
+}
+/* ============ steps & activity ============ */
+// Plans already include a usual day's movement (via the activity level), so only steps above that
+// usual amount count. Plato adds half of the estimated burn, capped per day, to protect the deficit.
+const ACTS=[["walk","🚶","Walking",4.3],["jog","🏃","Jogging",7.0],["ball","🏀","Basketball",6.5],["bike","🚴","Cycling",6.8],["zumba","💃","Zumba",6.5],["swim","🏊","Swimming",6.0],["badminton","🏸","Badminton",5.5],["gym","🏋️","Gym",5.0],["chores","🧹","Chores",3.3]];
+const INTENSITY={easy:[0.8,"Easy"],moderate:[1,"Moderate"],hard:[1.25,"Hard"]};
+const EARN_SHARE=0.5, EARN_CAP=500, STEP_GOAL=10000;
+function usualSteps(){ const a=+(S.profile?.activity||1.375); return a<1.3?5000:a<1.45?7500:a<1.6?10000:12500; }
+function stepsBurn(steps){
+  const kg=currentWeight(), cm=S.profile?.heightCm, extra=Math.max(0,(steps||0)-usualSteps());
+  if(!kg||!cm) return {extra,km:0,burn:0};
+  const km=extra*cm*(S.profile.sex==="male"?0.415:0.413)/100/1000; // step length ≈ 41% of height
+  return {extra,km,burn:0.5*kg*km};                                 // walking ≈ 0.5 kcal per kg per km above resting
+}
+function actBurn(type,min,int){ const a=ACTS.find(x=>x[0]===type), kg=currentWeight(); if(!a||!kg) return 0; return Math.max(0,(a[3]*INTENSITY[int][0]-1)*kg*min/60); }
+function dayEarned(day){
+  const st=r0(stepsBurn(day.steps).burn*EARN_SHARE), ac=(day.acts||[]).reduce((t,x)=>t+r0((+x.kcal||0)*EARN_SHARE),0), raw=st+ac; // round each part so the parts add up to the total
+  return {steps:st,acts:ac,earned:r0(Math.min(EARN_CAP,raw)),capped:raw>EARN_CAP};
 }
 function dayTotals(day){ const t={kcal:0,p:0,c:0,f:0,fiber:0,sugar:0,sodium:0}; for(const e of day.entries) for(const k in t) t[k]+=Number(e[k])||0; return t; }
 function currentWeight(){ return S.weights.length? S.weights[S.weights.length-1].kg : (S.profile?.startKg||null); }
@@ -520,6 +564,18 @@ function moonsCard(st){
     <div class="moons">${MOONS.map(([nm,d])=>`<div class="moon ${st>=d?"got":""}" title="${d}-day streak">${moonIcon(st>=d)}${nm}</div>`).join("")}</div>
     <p class="muted small" style="margin:8px 0 0">${!next?"You've collected all five of Pluto's moons. 🌕":st?`${next[0]} joins your orbit after ${n} more day${n===1?"":"s"} of logging.`:"Log 3 days in a row to bring Charon into your orbit."}</p></div>`;
 }
+function activityCard(e){
+  const st=S.day.steps||0, sb=stepsBurn(st), acts=S.day.acts||[], c=2*Math.PI*22, f=Math.min(st/STEP_GOAL,1), u=usualSteps();
+  return `<div class="card" style="margin-top:14px"><div class="meal-head"><h3>Steps &amp; activity</h3><span class="muted small">${e.earned?`+${e.earned.toLocaleString()} kcal${e.capped?" (daily max)":""}`:"Nothing earned yet"}</span></div>
+    <div class="steps-row">
+      <svg class="steps-ring" viewBox="0 0 54 54" aria-hidden="true"><circle cx="27" cy="27" r="22" fill="none" stroke="var(--surface2)" stroke-width="6"/>${f?`<circle cx="27" cy="27" r="22" fill="none" stroke="var(--lime)" stroke-width="6" stroke-linecap="round" stroke-dasharray="${(c*f).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 27 27)"/>`:""}<text x="27" y="31.5" text-anchor="middle" font-size="12">👟</text></svg>
+      <div class="info"><div class="steps-num">${st?st.toLocaleString():"No steps yet"}</div><div class="muted small">${!st?"Add the number from your phone or watch":sb.extra?`${sb.extra.toLocaleString()} above your usual ${u.toLocaleString()}`:`Your usual day is about ${u.toLocaleString()}`}</div></div>
+      ${e.steps>=0.5?`<span class="gain">+${r0(e.steps)}</span>`:""}
+    </div>
+    ${acts.map(a=>{ const A=ACTS.find(x=>x[0]===a.type)||ACTS[0]; return `<div class="entry"><div class="thumb">${A[1]}</div><div class="info"><div class="nm">${A[2]}</div><div class="muted small">${a.min} min, ${INTENSITY[a.int]?.[1].toLowerCase()||"moderate"}</div></div><span class="gain">+${r0(a.kcal*EARN_SHARE)}</span><button class="iconbtn" data-actdel="${a.id}" aria-label="Remove ${A[2]}">✕</button></div>`; }).join("")}
+    ${!calcPlan()?`<p class="muted small" style="margin:8px 0 0">Set up your plan on the Me tab so Plato can work out the calories.</p>`:""}
+    <div class="row" style="margin-top:10px"><button class="btn ghost sm" data-steps>Update steps</button><button class="btn ghost sm" data-addact>+ Add activity</button></div></div>`;
+}
 function checkMoons(){
   const got=MOONS.filter(([,d])=>streak()>=d).length, seen=Store.get("moonsSeen",0);
   if(got>seen) toast(`🌑 ${MOONS[got-1][0]} joined your orbit!`);
@@ -535,7 +591,7 @@ function cheer(eaten,target){
   return "Great start. Keep logging 🙌";
 }
 function viewToday(){
-  const plan=calcPlan(), t=dayTotals(S.day), target=plan?.target||0, left=target-t.kcal, over=target&&left<0, st=streak();
+  const plan=calcPlan(), t=dayTotals(S.day), ern=dayEarned(S.day), base=plan?.target||0, target=base?base+ern.earned:0, left=target-t.kcal, over=target&&left<0, st=streak();
   const macro=(name,val,goal,color)=>`<div class="macro"><div class="name" style="color:${color}">${name}</div><div class="val">${r0(val)}<span class="muted small"> / ${goal||"–"} g</span></div><div class="bar"><i style="width:${goal?Math.min(100,val/goal*100):0}%;background:${color}"></i></div></div>`;
   const glasses=Array.from({length:8},(_,i)=>`<button class="glass ${i<S.day.water?"full":""}" data-glass="${i}" aria-label="${i+1} glass${i?"es":""} of water"></button>`).join("");
   return `
@@ -549,6 +605,7 @@ function viewToday(){
     ${plutoOrbit(t.kcal,target)}
     <div class="plate-num">${target?Math.abs(r0(left)).toLocaleString():r0(t.kcal).toLocaleString()}</div>
     <div class="plate-lbl">${target?(over?"kcal over your target":`kcal left of ${target.toLocaleString()}`):"kcal eaten"}</div>
+    ${base&&ern.earned?`<div class="earned">${base.toLocaleString()} target + ${ern.earned.toLocaleString()} earned</div>`:""}
     ${target?`<div class="plate-sub"><span class="muted">Eaten<b>${r0(t.kcal).toLocaleString()}</b></span><span class="muted">Target<b>${target.toLocaleString()}</b></span></div>`:""}
   </section>
   <p class="cheer">${cheer(t.kcal,target)}</p>
@@ -558,6 +615,7 @@ function viewToday(){
     <span class="chip">Sugar ${r0(t.sugar)} g</span>
     <span class="chip ${t.sodium>2000?"warn":""}">Sodium ${r0(t.sodium).toLocaleString()} / 2,000 mg</span>
   </div>
+  ${activityCard(ern)}
   ${moonsCard(st)}
   ${hasDonate()&&(Store.get("logCount",0)>=10)&&!Store.get("nudged",false)?`<div class="card" style="margin-top:14px;border:2px solid var(--pink)">
     <h3>Enjoying Plato? ☕</h3><p class="muted small" style="margin:6px 0 10px">Plato is free. Each photo scan costs a little to run, so donations keep it free for everyone.</p>
@@ -604,9 +662,25 @@ function barChart(days,target){
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Calories per day">
     <defs><linearGradient id="bg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F2C37A"/><stop offset="1" stop-color="#B8662A"/></linearGradient></defs>
     ${[.25,.5,.75].map(f=>`<line x1="${pl}" x2="${W-pr}" y1="${y(max*f)}" y2="${y(max*f)}" stroke="var(--line)"/><text x="${pl-6}" y="${y(max*f)+4}" font-size="10" text-anchor="end" fill="var(--muted)">${r0(max*f/10)*10}</text>`).join("")}
-    ${days.map((d,i)=>{ const over=target&&d.kcal>target*1.05; return `${d.kcal?`<rect x="${pl+i*bw+bw*.16}" y="${y(d.kcal)}" width="${bw*.68}" height="${Math.max(0,H-pb-y(d.kcal))}" rx="3" fill="${over?"var(--red)":"url(#bg1)"}"/>`:""}
+    ${days.map((d,i)=>{ const over=target&&d.kcal>(target+(d.earned||0))*1.05; return `${d.kcal?`<rect x="${pl+i*bw+bw*.16}" y="${y(d.kcal)}" width="${bw*.68}" height="${Math.max(0,H-pb-y(d.kcal))}" rx="3" fill="${over?"var(--red)":"url(#bg1)"}"/>`:""}
       ${i%lblEvery===0?`<text x="${pl+i*bw+bw/2}" y="${H-8}" font-size="9" text-anchor="middle" fill="var(--muted)">${days.length>14?new Date(d.date+"T12:00:00").getDate():new Date(d.date+"T12:00:00").toLocaleDateString(undefined,{weekday:"narrow"})}</text>`:""}`;}).join("")}
     ${target?`<line x1="${pl}" x2="${W-pr}" y1="${y(target)}" y2="${y(target)}" stroke="var(--orange)" stroke-dasharray="5 4" stroke-width="2"/><text x="${W-pr}" y="${y(target)-5}" font-size="10" text-anchor="end" fill="var(--orange)" font-weight="700">target</text>`:""}</svg>`;
+}
+function stepsSection(){
+  const days=[]; for(let i=6;i>=0;i--){ const d=addDays(dstr(),-i); days.push({date:d,steps:S.summary[d]?.steps||0,earned:S.summary[d]?.earned||0}); }
+  const acts=[]; for(const d of days) for(const a of (Store.get("day-"+d.date,{}).acts||[])) acts.push({...a,date:d.date});
+  if(!days.some(d=>d.steps)&&!acts.length) return `<h2>Steps &amp; activity</h2><div class="card"><div class="empty">Add your steps or an activity on the Today screen to see them here.</div></div>`;
+  const withSteps=days.filter(d=>d.steps), avg=withSteps.length?withSteps.reduce((a,d)=>a+d.steps,0)/withSteps.length:0, earned=days.reduce((a,d)=>a+d.earned,0), u=usualSteps();
+  const W=340,H=170,pl=36,pr=10,pt=12,pb=24, max=Math.max(u*1.3,...days.map(d=>d.steps))*1.08, bw=(W-pl-pr)/7, y=v=>pt+(1-v/max)*(H-pt-pb);
+  const ticks=[.25,.5,.75].map(f=>Math.round(max*f/1000)*1000).filter((v,i,a)=>v>0&&a.indexOf(v)===i);
+  return `<h2>Steps &amp; activity</h2>
+  <div class="stats"><div class="stat s1"><span>Avg steps (7 days)</span><b>${avg?r0(avg).toLocaleString():"–"}</b></div><div class="stat s4"><span>Earned this week</span><b>+${r0(earned).toLocaleString()} kcal</b></div></div>
+  <div class="card chart-box" style="margin-top:10px"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Steps for the last 7 days">
+    ${ticks.map(v=>`<line x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${pl-6}" y="${y(v)+4}" font-size="10" text-anchor="end" fill="var(--muted)">${v/1000}k</text>`).join("")}
+    ${days.map((d,i)=>`${d.steps?`<rect x="${(pl+i*bw+bw*.18).toFixed(1)}" y="${y(d.steps).toFixed(1)}" width="${(bw*.64).toFixed(1)}" height="${Math.max(0,H-pb-y(d.steps)).toFixed(1)}" rx="3" fill="${d.steps>u?"var(--lime)":"var(--surface2)"}"/>`:""}<text x="${(pl+i*bw+bw/2).toFixed(1)}" y="${H-7}" font-size="9" text-anchor="middle" fill="${i===6?"var(--ink)":"var(--muted)"}">${i===6?"Today":new Date(d.date+"T12:00:00").toLocaleDateString(undefined,{weekday:"narrow"})}</text>`).join("")}
+    <line x1="${pl}" x2="${W-pr}" y1="${y(u)}" y2="${y(u)}" stroke="var(--primary)" stroke-dasharray="5 4" stroke-width="1.5"/></svg>
+    <div class="legend"><span><i style="background:var(--lime)"></i>Above your usual day (earns calories)</span><span><i style="background:none;border-top:2px dashed var(--primary);height:0;border-radius:0"></i>Usual ${u.toLocaleString()} steps</span></div></div>
+  ${acts.length?`<div class="card" style="margin-top:10px"><h3>Activities this week</h3>${acts.reverse().map(a=>{ const A=ACTS.find(x=>x[0]===a.type)||ACTS[0]; return `<div class="entry"><div class="thumb">${A[1]}</div><div class="info"><div class="nm">${A[2]}</div><div class="muted small">${prettyDate(a.date)}, ${a.min} min</div></div><span class="gain">+${r0(a.kcal*EARN_SHARE)}</span></div>`; }).join("")}</div>`:""}`;
 }
 function trendPerWeek(){
   const pts=S.weights.filter(w=>w.date>=addDays(dstr(),-28)); if(pts.length<3) return null;
@@ -617,9 +691,9 @@ function trendPerWeek(){
 /* ============ Progress ============ */
 function viewProgress(){
   const plan=calcPlan(), target=plan?.target||0, range=S.progRange||14, days=[];
-  for(let i=range-1;i>=0;i--){ const d=addDays(dstr(),-i); days.push({date:d,kcal:S.summary[d]?.kcal||0}); }
+  for(let i=range-1;i>=0;i--){ const d=addDays(dstr(),-i); days.push({date:d,kcal:S.summary[d]?.kcal||0,earned:S.summary[d]?.earned||0}); }
   const logged=days.filter(d=>d.kcal>0), avg=logged.length?logged.reduce((a,d)=>a+d.kcal,0)/logged.length:0;
-  const onTarget=logged.filter(d=>target&&d.kcal<=target*1.05).length, start=S.weights[0]?.kg, now=currentWeight(), trend=trendPerWeek();
+  const onTarget=logged.filter(d=>target&&d.kcal<=(target+d.earned)*1.05).length, start=S.weights[0]?.kg, now=currentWeight(), trend=trendPerWeek();
   const ds=logged.map(d=>S.summary[d.date]); let split=null;
   if(ds.length){ const s=ds.reduce((a,d)=>({p:a.p+d.p,c:a.c+d.c,f:a.f+d.f}),{p:0,c:0,f:0}); const kc=s.p*4+s.c*4+s.f*9||1; split={p:s.p*4/kc*100,c:s.c*4/kc*100,f:s.f*9/kc*100}; }
   return `
@@ -636,6 +710,7 @@ function viewProgress(){
   ${split?`<h2>Average macro split</h2><div class="card"><div class="bar" style="height:16px;display:flex">
     <i style="width:${split.p}%;background:var(--protein);border-radius:0"></i><i style="width:${split.c}%;background:var(--carb);border-radius:0"></i><i style="width:${split.f}%;background:var(--fat);border-radius:0"></i></div>
     <div class="row small" style="margin-top:8px;font-weight:700"><span style="color:var(--protein)">Protein ${r0(split.p)}%</span><span style="color:var(--carb)">Carbs ${r0(split.c)}%</span><span style="color:var(--fat)">Fat ${r0(split.f)}%</span></div></div>`:""}
+  ${stepsSection()}
   <h2>Workouts</h2>
   ${workoutProgressCard()}
   <h2 id="weightSec">Weight</h2>
@@ -732,6 +807,7 @@ function viewMe(){
     <p><b>Maintenance (TDEE)</b> = BMR × an activity factor (1.2 to 1.725).</p>
     <p><b>Deficit</b> uses ≈7,700 kcal per kg of body fat. Pace is capped at 1% of body weight per week, and the target never drops below 1,200 kcal (women) or 1,500 kcal (men).</p>
     <p><b>Macros</b>: protein at 1.6 g/kg (adjusted weight above BMI 25) to protect muscle; fat at 28% of calories; carbs fill the rest. Fiber at 14 g per 1,000 kcal. Sodium limit is the WHO's 2,000 mg.</p>
+    <p><b>Steps and activity</b>: your plan already counts a usual day of walking for your activity level (about 5,000 steps if sedentary, 7,500 lightly active, 10,000 moderately active, 12,500 very active), so only steps above that count. Step length is about 41% of your height, and walking burns about 0.5 kcal per kg per km above resting. Activities use standard MET values: (MET − 1) × weight in kg × hours. Plato adds half of the estimate to your target, up to 500 kcal a day, because exercise estimates usually run high.</p>
     <p><b>BMI</b> uses the WHO Asian cut-offs (overweight from 23), which fit Filipino adults better.</p>
     <p>These are estimates. If your weight doesn't move after 3–4 weeks of consistent logging, lower the target by 100–200 kcal. This isn't medical advice — check with a doctor if you're pregnant, breastfeeding, diabetic or on medication.</p>
   </div>
@@ -748,6 +824,9 @@ function bindView(){
   app.querySelectorAll("[data-glass]").forEach(b=>b.onclick=()=>{ const i=+b.dataset.glass; S.day.water=S.day.water===i+1?i:i+1; saveDay(); render(); });
   app.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{ const e=S.day.entries.find(x=>x.id===b.dataset.del); if(!confirm(`Delete ${e?.name||"this entry"}?`)) return; S.day.entries=S.day.entries.filter(x=>x.id!==b.dataset.del); saveDay(); render(); });
   app.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>openEditSheet(b.dataset.edit));
+  app.querySelectorAll("[data-steps]").forEach(b=>b.onclick=()=>{ L={step:"steps",steps:S.day.steps||0}; openSheet(); drawSheet(); });
+  app.querySelectorAll("[data-addact]").forEach(b=>b.onclick=()=>{ L={step:"act",type:"walk",min:30,int:"moderate"}; openSheet(); drawSheet(); });
+  app.querySelectorAll("[data-actdel]").forEach(b=>b.onclick=()=>{ const a=(S.day.acts||[]).find(x=>x.id===b.dataset.actdel), A=ACTS.find(x=>x[0]===a?.type); if(!confirm(`Remove ${A?.[2]||"this activity"}?`)) return; S.day.acts=S.day.acts.filter(x=>x.id!==b.dataset.actdel); saveDay(); renderKeepScroll(); });
   app.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>openLogSheet(b.dataset.add));
   app.querySelectorAll("[data-recent]").forEach(b=>b.onclick=()=>{ const r=S.recents[+b.dataset.recent]; S.day.entries.push({...r,id:uid(),meal:mealForNow(),time:Date.now()}); saveDay(); toast(`Added ${r.name}`); render(); });
   app.querySelectorAll("[data-range]").forEach(b=>b.onclick=()=>{ S.progRange=+b.dataset.range; render(); });
@@ -880,6 +959,47 @@ function drawSheet(){
     $("#lMeal").onchange=e=>L.meal=e.target.value;
     $("#lSave").onclick=async()=>{ L.meal=$("#lMeal").value; const t=itemTotals(), name=L.items.map(i=>i.name).join(", "), thumb=L.file?await makeThumb(L.file):null;
       commitEntry({name,kcal:t.kcal,p:t.p,c:t.c,f:t.f,fiber:t.fiber,sugar:t.sugar,sodium:t.sodium,thumb}); };
+  }
+  else if(L.step==="steps"){
+    const isToday=S.date===dstr();
+    b.innerHTML=sheetHead(isToday?"Today's steps":`Steps on ${prettyDate(S.date)}`)+`
+      <label class="f" for="sIn">${isToday?"Steps so far today":"Steps that day"}</label>
+      <input class="big-in" id="sIn" type="text" inputmode="numeric" autocomplete="off" placeholder="0" value="${L.steps?L.steps.toLocaleString():""}">
+      <div class="chips" style="margin-top:10px">${[500,1000,2500].map(n=>`<button class="chip" data-plus="${n}">+${n.toLocaleString()}</button>`).join("")}<button class="chip" data-plus="0">Clear</button></div>
+      <p class="muted small" style="margin:4px 0 0">Find it in the Health app (iPhone), Google Fit or Samsung Health (Android), or your watch.</p>
+      <div class="est" id="sEst"></div>
+      <button class="btn" id="sSave" style="margin-top:12px">Save steps</button>`;
+    const inp=$("#sIn"), est=()=>{ const sb=stepsBurn(L.steps), u=usualSteps();
+      $("#sEst").innerHTML=!calcPlan()?`<p>Set up your plan on the Me tab so Plato can work out what your steps burn.</p>`:`
+        <div class="line"><span>Walking above your usual day</span><b>${sb.km.toFixed(1)} km</b></div>
+        <div class="line"><span>Calories burned on those steps</span><b>≈ ${r0(sb.burn).toLocaleString()} kcal</b></div>
+        <div class="line"><span>Added to the day's target</span><b class="plus">+${r0(sb.burn*EARN_SHARE).toLocaleString()} kcal</b></div>
+        <p>Your plan (${ACTIVITY.find(a=>a[0]===+S.profile.activity)?.[1]||"your activity level"}) already counts about ${u.toLocaleString()} steps a day, so only the steps above that count. Plato adds half of what they burn, to keep your deficit safe.</p>`; };
+    inp.oninput=()=>{ L.steps=Math.min(parseInt(inp.value.replace(/[^0-9]/g,""),10)||0,100000); est(); };
+    b.querySelectorAll("[data-plus]").forEach(x=>x.onclick=()=>{ const n=+x.dataset.plus; L.steps=n?Math.min(L.steps+n,100000):0; inp.value=L.steps?L.steps.toLocaleString():""; est(); });
+    est();
+    $("#sSave").onclick=()=>{ if(L.steps) S.day.steps=L.steps; else delete S.day.steps; saveDay(); const had=!!L.steps; closeSheet(); toast(had?"Steps saved ✅":"Steps cleared"); renderKeepScroll(); };
+  }
+  else if(L.step==="act"){
+    const burn=actBurn(L.type,L.min,L.int), A=ACTS.find(x=>x[0]===L.type), isToday=S.date===dstr();
+    b.innerHTML=sheetHead("Add activity")+`
+      <label class="f" id="aLbl">What did you do?</label>
+      <div class="acts" role="group" aria-labelledby="aLbl">${ACTS.map(([k,e,n])=>`<button data-atype="${k}" aria-pressed="${L.type===k}"><span>${e}</span>${n}</button>`).join("")}</div>
+      <label class="f" id="mLbl" style="margin-top:14px">How long?</label>
+      <div class="stepper" role="group" aria-labelledby="mLbl"><button data-amin="-5" aria-label="5 minutes less">−</button><output>${L.min} min</output><button data-amin="5" aria-label="5 minutes more">+</button>
+        <div class="chips">${[15,30,60].map(m=>`<button class="chip" data-aset="${m}" aria-pressed="${L.min===m}">${m}</button>`).join("")}</div></div>
+      <label class="f" id="iLbl" style="margin-top:14px">How hard?</label>
+      <div class="seg" role="group" aria-labelledby="iLbl">${Object.entries(INTENSITY).map(([k,[,l]])=>`<button data-aint="${k}" aria-pressed="${L.int===k}">${l}</button>`).join("")}</div>
+      <div class="est">${!currentWeight()?`<p>Set up your plan on the Me tab so Plato can work out what this burns.</p>`:`
+        <div class="line"><span>${A[2]}, ${L.min} min</span><b>≈ ${r0(burn).toLocaleString()} kcal burned</b></div>
+        <div class="line"><span>Added to the day's target</span><b class="plus">+${r0(burn*EARN_SHARE).toLocaleString()} kcal</b></div>
+        <p>Plato adds half, because exercise estimates usually run high. Your total extra is capped at ${EARN_CAP} kcal a day.</p>`}</div>
+      <button class="btn" id="aSave" style="margin-top:12px">Add to ${isToday?"today":prettyDate(S.date)}</button>`;
+    b.querySelectorAll("[data-atype]").forEach(x=>x.onclick=()=>{ L.type=x.dataset.atype; drawSheet(); });
+    b.querySelectorAll("[data-amin]").forEach(x=>x.onclick=()=>{ L.min=Math.max(5,Math.min(300,L.min+ +x.dataset.amin)); drawSheet(); });
+    b.querySelectorAll("[data-aset]").forEach(x=>x.onclick=()=>{ L.min=+x.dataset.aset; drawSheet(); });
+    b.querySelectorAll("[data-aint]").forEach(x=>x.onclick=()=>{ L.int=x.dataset.aint; drawSheet(); });
+    $("#aSave").onclick=()=>{ S.day.acts=(S.day.acts||[]).concat({id:uid(),type:L.type,min:L.min,int:L.int,kcal:r0(burn),time:Date.now()}); saveDay(); const nm=A[2]; closeSheet(); toast(`${nm} added ✅`); renderKeepScroll(); };
   }
   else if(L.step==="edit"){
     const e=S.day.entries.find(x=>x.id===L.editId); if(!e) return closeSheet();
