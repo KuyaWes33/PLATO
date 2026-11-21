@@ -1,7 +1,7 @@
 // Plato service worker: caches the app so it opens and works offline.
 // Bump VERSION whenever you change index.html so phones pick up the update,
 // and add a release entry at the top of version.json so people get the "Update" notice.
-const VERSION = "plato-v8";
+const VERSION = "plato-v9";
 const SHELL = ["./", "./index.html", "./version.json", "./pluto-golden.png", "./manifest.webmanifest", "./icon-192.png?v=2", "./icon-512.png?v=2", "./icon-maskable-512.png?v=2", "./apple-touch-icon.png?v=2",
   "./exercises.js", "./workout.js", "./coach3d.js",
   "./thumbs/arm_circles.webp", "./thumbs/barbell_back_squat.webp", "./thumbs/bent_over_row.webp", "./thumbs/bird_dog.webp", "./thumbs/burpee.webp", "./thumbs/calf_raise.webp", "./thumbs/childs_pose.webp", "./thumbs/crunch.webp", "./thumbs/db_bench_press.webp", "./thumbs/db_curl.webp", "./thumbs/db_lateral_raise.webp", "./thumbs/db_lunge.webp", "./thumbs/db_shoulder_press.webp", "./thumbs/deadlift.webp", "./thumbs/forward_fold.webp", "./thumbs/glute_bridge.webp", "./thumbs/goblet_squat.webp", "./thumbs/high_knees.webp", "./thumbs/hip_thrust.webp", "./thumbs/jumping_jack.webp", "./thumbs/knee_pushup.webp", "./thumbs/lat_pulldown.webp", "./thumbs/leg_raise.webp", "./thumbs/mountain_climber.webp", "./thumbs/plank.webp", "./thumbs/pushup.webp", "./thumbs/reverse_lunge.webp", "./thumbs/romanian_deadlift.webp", "./thumbs/squat.webp", "./thumbs/superman.webp", "./thumbs/tricep_pushdown.webp"];

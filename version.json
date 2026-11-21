@@ -1,6 +1,17 @@
 {
   "releases": [
     {
+      "version": "1.3.0",
+      "date": "2026-11-21",
+      "title": "Steps and activity",
+      "notes": [
+        "Add your daily steps from your phone or watch, and log activities like walking, basketball, Zumba or the gym.",
+        "Plato estimates the calories you burn and adds half to your daily target, up to 500 kcal a day, so you get a little more room while keeping a healthy deficit.",
+        "Only steps above your plan's usual day count, because your plan already includes everyday walking.",
+        "See your steps for the week and what you earned on the Progress tab."
+      ]
+    },
+    {
       "version": "1.2.0",
       "date": "2026-11-18",
       "title": "Plato meets Pluto",
